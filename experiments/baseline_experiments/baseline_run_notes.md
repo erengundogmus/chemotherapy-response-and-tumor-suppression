@@ -11,16 +11,16 @@ https://github.com/kisblilla/piecewise-pinn-tumor-growth
 ## Local Setup
 
 Operating system: Windows
-Python version: 3.15.0
+Python version: 3.12.10
+Environment: Local virtual environment created inside the reference repository
 
 ## Commands Used
 
-To be added during setup and execution.
+The reference repository was cloned outside our project repository:
 
-## Baseline Output
-
-To be added after the first successful run.
-
-## Issues
-
-To be added if any error occurs during setup or execution.
+```bash
+cd C:\pinn-project
+mkdir reference-code
+cd reference-code
+git clone https://github.com/kisblilla/piecewise-pinn-tumor-growth.git
+cd piecewise-pinn-tumor-growth
