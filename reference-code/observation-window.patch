@@ -1,0 +1,87 @@
+diff --git a/main.py b/main.py
+index 2862870..7173455 100644
+--- a/main.py
++++ b/main.py
+@@ -27,6 +27,7 @@ params = {
+     'c': 1.82, 'k1': 14.008, 'k2': 136.28 # PK parameters
+ }
+ x10 = 31.4035998721061 # initial value (of a specific mouse), gained from NLME fitting
++STUDY_END_DAY = 20
+ dose_times = [7, 11, 14, 18, 21, 25, 28, 32, 35, 39, 42, 46, 49, 53, 56, 60, 63, 67, 70, 74, 77, 81, 84, 88, 91, 95, 98, 102, 105, 109, 112, 116, 119] # doses times (of a specific mouse), from mouse experiment
+ doses = [0.46, 1.52, 0.41, 0.67, 0.31, 0.2, 2.6, 0.2, 2.16, 2.74, 0.1, 0.36, 1.01, 4.16, 2.5, 0.95, 1.2, 0.53, 0.7, 0.64, 6.13, 3.3, 3.93, 3.37, 1.24, 2.12, 5.39, 2.99, 3.5, 4.0, 3.51, 3.04, 2.64] # doses amounts (of a specific mouse), from mouse experiment
+ 
+@@ -43,13 +44,15 @@ def tumor_model_extended(t, x, a, b, n, w, ED50, c, k1, k2):
+ 
+ # Data generation (Ground Truth)
+ print("Synthetic data generation ...")
+-t_span = [0, 105]
++print(f"Observation window: {STUDY_END_DAY} days")
++t_span = [0, STUDY_END_DAY]
+ y0 = [x10, 0.0, 0.0, 0.0]
+ all_t = np.array([])
+ all_y = np.empty((4, 0))
+ 
+ # Time points for piecewise integration (boundaries at dosing events)
+-time_points = sorted(set([0] + dose_times + [t_span[1]])) 
++active_dose_times = [t for t in dose_times if t <= STUDY_END_DAY]
++time_points = sorted(set([0] + active_dose_times + [t_span[1]]))
+ 
+ # Synthetic data generation (total_tumor)
+ # This loop use piecewise numerical integration by splitting the timeline at each dosing event to handle instantaneous drug concentration jumps.
+@@ -173,8 +176,7 @@ class PiecewiseTumorPINN(nn.Module):
+         return np.vstack(predictions) * X_SCALE
+ 
+ # Chronological list of time checkpoints by combining start, dosing, and end times.
+-boundaries = sorted(list(set([0.0] + dose_times + [105.0])))
+-# Initialize the segmented neural network manager
++boundaries = sorted(list(set([0.0] + [t for t in dose_times if t <= STUDY_END_DAY] + [float(STUDY_END_DAY)])))# Initialize the segmented neural network manager
+ model = PiecewiseTumorPINN(boundaries).to(device) 
+ 
+ # Convert fixed biological constants into PyTorch tensors and move them to the hardware device (GPU/CPU).
+@@ -344,7 +346,7 @@ def save_evaluation(name, epoch):
+ 
+     # 1. PINN prediction
+     # Dense sampling for visualization 
+-    t_eval = np.linspace(0, 105, 500)
++    t_eval = np.linspace(0, STUDY_END_DAY, 500)
+     y_pred_norm = model.predict_full_trajectory(t_eval)
+     y1_pred = y_pred_norm[:, 0]
+     y2_pred = y_pred_norm[:, 1]
+@@ -424,7 +426,7 @@ for epoch in range(epochs_p2):
+ 
+ save_evaluation("02_final", epochs_p1 + epochs_p2)
+ 
+-print(f"\Results:")
++print(f"\nResults:")
+ print(f"True b: {params['b']}")
+ print(f"Predicted b: {b_var.item():.4f}")
+ 
+@@ -434,19 +436,10 @@ plt.axhline(params['b'], color='r', linestyle='--')
+ plt.title("Convergence of parameter b")
+ plt.savefig("results_extended/03_b_convergence.png")
+ 
+-# --- Download results (Google Colab) ---
+-print("\n--- Eredmények tömörítése és letöltése ---")
+-
+-# Compress the entire 'results_extended' directory into a single .zip file
+-shutil.make_archive('results_extended', 'zip', 'results_extended')
+-
+-# Attempt to trigger a browser download (specific to Google Colab/Jupyter)
+-try:
+-    from google.colab import files
+-        files.download('results_extended.zip')
+-        print("Download started (results_extended.zip).")
+-except ImportError:
+-    # Fallback logic if running on a local PC or server
+-    print("Non-Google Colab environment detected.")
+-    print(f"Images can be found here: {os.path.abspath('results_extended')}")
+-    print(f"A zip file was also created at: {os.path.abspath('results_extended.zip')}")
+\ No newline at end of file
++# --- Save results locally ---
++print("\n--- Saving results locally ---")
++
++shutil.make_archive("results_extended", "zip", "results_extended")
++
++print("Results folder:", os.path.abspath("results_extended"))
++print("Results zip:", os.path.abspath("results_extended.zip"))
+\ No newline at end of file
